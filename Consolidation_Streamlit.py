@@ -32,7 +32,7 @@ st.markdown("""
     }
     [data-testid="stSidebar"] > div:first-child {
         padding-top: 0rem;
-        margin-top: -5rem;
+        margin-top: -1rem;
     }
     [data-testid="stSidebarNav"] {
         padding-top: 0rem;
@@ -149,26 +149,10 @@ if group_method == 'Post Code Level' and not all_postcodes:
 elif group_method == 'Customer Level' and not all_customers:
     if selected_customers:  # Only filter if some customers are selected
         df = df[df['NAME'].isin(selected_customers)]
-   
-
-    
+      
     
 # Create tabs
 tab1, tab2 = st.tabs(["Simulation", "Calculation"])
-
-
-
-# Sidebar - Simulation Parameters
-st.sidebar.write("")
-st.sidebar.subheader("Simulation Parameters")
-shipment_window_range = st.sidebar.slider("Shipment Window", 0, 30, (2, 7))
-utilization_threshold_range = st.sidebar.slider("Utilization Threshold", 25, 95, (60, 80), step=5)
-
-
-# Sidebar - Calculation Parameters
-st.sidebar.subheader("Calculation Parameters")
-calc_shipment_window = st.sidebar.number_input("Shipment Window", min_value=0, max_value=7, value=4)
-calc_utilization_threshold = st.sidebar.number_input("Utilization Threshold", min_value=25, max_value=95, value=70, step=5)
 
 
 # Helper functions
@@ -367,9 +351,9 @@ def create_utilization_chart(all_consolidated_shipments):
     total_shipments = len(all_consolidated_shipments)
     utilization_distribution = {bin: (count / total_shipments) * 100 for bin, count in utilization_bins.items()}
 
-    fig = go.Figure(data=[go.Bar(x=list(utilization_distribution.keys()), y=list(utilization_distribution.values()))])
+    fig = go.Figure(data=[go.Bar(x=list(utilization_distribution.keys()), y=list(utilization_distribution.values()), marker_color='#1f77b4')])
     fig.update_layout(
-        title='Utilization Distribution',
+        title={'text': 'Utilization Distribution', 'font': {'size': 22}},
         xaxis_title='Utilization Range',
         yaxis_title='Percentage of Shipments', 
         width=1000, 
@@ -398,9 +382,11 @@ def create_pallet_distribution_chart(all_consolidated_shipments, total_shipment_
     # Sort the bins to ensure they're in the correct order
     sorted_bins = sorted(pallet_distribution.items(), key=lambda x: int(x[0].split('-')[0]))
 
-    fig = go.Figure(data=[go.Bar(x=[bin for bin, _ in sorted_bins], y=[value for _, value in sorted_bins])])
+    fig = go.Figure(data=[go.Bar(x=[bin for bin, _ in sorted_bins], 
+                                 y=[value for _, value in sorted_bins],
+                                 marker_color='#1f77b4')])
     fig.update_layout(
-        title='Pallet Distribution',
+        title={'text': 'Pallet Distribution', 'font': {'size': 22, 'weight': 'normal'}},
         xaxis_title='Pallet Range',
         yaxis_title='Percentage of Shipments',
         xaxis=dict(tickangle=0),
@@ -596,10 +582,11 @@ def create_metric_box(label, value, color_start="#1f77b4", color_end="#0053a4"):
         border-radius: 15px;
         margin: 0px 0 20px 0;
         text-align: center;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.4);
+        border: 2px solid #ffffff;
     ">
-        <h4 style="color: white; margin: 0; font-size: 16px; font-weight: 500;">{label}</h4>
-        <p style="color: white; font-size: 16px; font-weight: 600; margin: 0px 0 0 0;">{value}</p>
+        <h4 style="color: white; margin: 0; font-size: 18px; font-weight: 500;">{label}</h4>
+        <p style="color: white; font-size: 18px; font-weight: 600; margin: 0px 0 0 0;">{value}</p>
     </div>
     """
     return st.markdown(html, unsafe_allow_html=True)
@@ -632,28 +619,37 @@ div.stDownloadButton > button:hover {
     
 # Simulation tab
 with tab1:
-    st.header("Simulation Results")
+    st.markdown("<h2 style='font-size:24px;'>Simulation Parameters</h2>", unsafe_allow_html=True)
     
-    with st.expander("Iteration Breakdown", expanded=False):
+    col1, col2, col3 = st.columns(3)
 
-        # Calculate the values dynamically
-        total_days = (end_date - start_date).days + 1
-        grouped = df.groupby(['PROD TYPE', group_field])
-        total_groups = len(grouped)
-        utilization_thresholds = range(utilization_threshold_range[0], utilization_threshold_range[1] + 1, 5)
-        shipment_windows = range(shipment_window_range[0], shipment_window_range[1] + 1)
-    
-        # Display the breakdown
-        st.write(f"Total days to check consolidation: {total_days} ({start_date.date()} to {end_date.date()})")
-        st.write(f"Total groups (PROD TYPE, {group_field}): {total_groups}")
-        st.write(f"Utilization thresholds: {', '.join(map(str, utilization_thresholds))}")
-        st.write(f"Shipment windows: {', '.join(map(str, shipment_windows))}")
+    with col1:
+        shipment_window_range = st.slider("Shipment Window", 0, 30, (2, 7))
+
+    with col2:
+        utilization_threshold_range = st.slider("Utilization Threshold", 25, 95, (60, 80), step=5)
+
+    with col3:
+        with st.expander("Iteration Breakdown", expanded=False):
+            # Calculate the values dynamically
+            total_days = (end_date - start_date).days + 1
+            grouped = df.groupby(['PROD TYPE', group_field])
+            total_groups = len(grouped)
+            utilization_thresholds = range(utilization_threshold_range[0], utilization_threshold_range[1] + 1, 5)
+            shipment_windows = range(shipment_window_range[0], shipment_window_range[1] + 1)
         
-        # Calculate total iterations
-        total_iterations = len(shipment_windows) * len(utilization_thresholds) * total_groups * total_days
-        total_calculations = len(shipment_windows) * len(utilization_thresholds)
-        st.write(f"\nTotal iterations: {total_iterations:,} (Total Calculations: {total_calculations:,})")    
-    
+            # Display the breakdown
+            st.write(f"Total days to check consolidation: {total_days}")
+            st.write(f"({start_date.date()} to {end_date.date()})")
+            st.write(f"Total groups (PROD TYPE, {group_field}): {total_groups}")
+            st.write(f"Utilization thresholds: {', '.join(map(str, utilization_thresholds))}")
+            st.write(f"Shipment windows: {', '.join(map(str, shipment_windows))}")
+            
+            # Calculate total iterations
+            total_iterations = len(shipment_windows) * len(utilization_thresholds) * total_groups * total_days
+            total_calculations = len(shipment_windows) * len(utilization_thresholds)
+            st.write(f"\nTotal iterations: {total_iterations:,} (Total Calculations: {total_calculations:,})")    
+        
 
     if st.button("Run Simulation"):
         start_time = time.time()
@@ -711,8 +707,8 @@ with tab1:
                         'Utilization Threshold': utilization_threshold,
                         'Total Orders': metrics['Total Orders'],
                         'Total Shipments': metrics['Total Shipments'],
-                        'Total Shipment Cost': metrics['Total Shipment Cost'],
-                        'Total Baseline Cost': metrics['Total Baseline Cost'],
+                        'Total Shipment Cost': round(metrics['Total Shipment Cost'], 1),
+                        'Total Baseline Cost': round(metrics['Total Baseline Cost'], 1),
                         'Cost Savings': metrics['Cost Savings'],
                         'Percent Savings': round(metrics['Percent Savings'], 1),
                         'Average Utilization': round(metrics['Average Utilization'], 1),
@@ -741,7 +737,7 @@ with tab1:
             st.write(f"Time taken: {time_taken_minutes} minutes {time_taken_seconds} seconds")            
                 
             # Display best results
-            st.subheader("Best Simulation Results")
+            st.markdown("<h2 style='font-size:26px;'>Best Simulation Results</h2>", unsafe_allow_html=True)
             st.write(f"Best Parameters: Shipment Window = {best_params[0]}, Utilization Threshold = {best_params[2]}%")
             
             col1, col2, col3, col4, col5, col6 = st.columns(6)
@@ -760,10 +756,9 @@ with tab1:
                 
     
             # Display charts for best results
-            st.subheader("Utilization Distribution (Best Results)")
             st.plotly_chart(create_utilization_chart(best_consolidated_shipments))
             
-            st.subheader("Pallet Distribution (Best Results)")
+            
             fig_pallet_distribution = create_pallet_distribution_chart(all_consolidated_shipments, total_shipment_capacity)
             st.plotly_chart(fig_pallet_distribution)
 
@@ -781,9 +776,10 @@ with tab1:
             color_mapper = linear_cmap(field_name='Cost Savings', palette=RdYlGn11[::-1], 
                                        low=optimal_results['Cost Savings'].min(), high=optimal_results['Cost Savings'].max())
             
+            st.markdown("<h2 style='font-size:24px;'>Optimal Simulation Results: Shipment Window vs Utilization Threshold</h2>", unsafe_allow_html=True)
+
             # Create the figure
-            p = figure(title="Optimal Simulation Results: Shipment Window vs Utilization Threshold",
-                       x_axis_label='Utilization Threshold (%)',
+            p = figure(x_axis_label='Utilization Threshold (%)',
                        y_axis_label='Shipment Window',
                        width=800, height=600)
             
@@ -820,8 +816,8 @@ with tab1:
 
             
             # Display the Shipment Window Comparison chart
-            st.subheader("Shipment Window Comparison")
-            
+            st.markdown("<h2 style='font-size:24px;'>Shipment Window Comparison</h2>", unsafe_allow_html=True)
+
             # Select the best rows for each shipment window
             best_results = results_df.loc[results_df.groupby('Shipment Window')['Percent Savings'].idxmax()]
             
@@ -902,7 +898,8 @@ with tab1:
             
             # Display table with all results
             results_df = results_df.sort_values(by=['Percent Savings', 'Shipment Window', 'Utilization Threshold'], ascending=[False, True, True]).reset_index(drop=True).set_index('Shipment Window')
-            st.subheader("All Simulation Results")
+            st.markdown("<h2 style='font-size:24px;'>All Simulation Results</h2>", unsafe_allow_html=True)
+
             
             # Custom CSS to set the height of the dataframe
             custom_css = """
@@ -930,20 +927,31 @@ with tab1:
 
 # Calculation tab
 with tab2:
-    st.header("Calculation Results")
-    
-    with st.expander("Iteration Breakdown", expanded=False):
+    st.markdown("<h2 style='font-size:24px;'>Calculation Parameters</h2>", unsafe_allow_html=True)
 
-        # Calculate the values dynamically
-        total_days = (end_date - start_date).days + 1
-        grouped = df.groupby(['PROD TYPE', group_field])
-        total_groups = len(grouped)
-        total_iterations = total_days * total_groups
+    col1, col2, col3 = st.columns(3)
     
-        # Display the breakdown
-        st.write(f"Total days to check consolidation: {total_days} ({start_date.date()} to {end_date.date()})")
-        st.write(f"Total groups (PROD TYPE, {group_field}): {total_groups}")
-        st.write(f"Total iterations: {total_iterations:,}")
+    with col1:
+        calc_shipment_window = st.slider("Shipment Window", min_value=0, max_value=30, value=4)
+    
+    with col2:
+        calc_utilization_threshold = st.slider("Utilization Threshold", min_value=25, max_value=95, value=70, step=5)
+    
+    with col3:
+        with st.expander("Iteration Breakdown", expanded=False):
+
+            # Calculate the values dynamically
+            total_days = (end_date - start_date).days + 1
+            grouped = df.groupby(['PROD TYPE', group_field])
+            total_groups = len(grouped)
+            total_iterations = total_days * total_groups
+        
+            # Display the breakdown
+            st.write(f"Total days to check consolidation: {total_days}")
+            st.write(f"({start_date.date()} to {end_date.date()})")
+            st.write(f"Total groups (PROD TYPE, {group_field}): {total_groups}")
+            st.write(f"Total iterations: {total_iterations:,}")
+    
     
     if st.button("Calculate"):
         start_time = time.time()
@@ -997,14 +1005,16 @@ with tab2:
                            
     
             # Add Calendar Chart
-            st.subheader("Shipments Calendar Heatmap")
+            st.markdown("<h2 style='font-size:24px;'>Shipments Calendar Heatmap</h2>", unsafe_allow_html=True)
+
             consolidated_df = pd.DataFrame(all_consolidated_shipments)
             heatmap_charts = create_heatmap_charts(consolidated_df, df)  # df is the original dataframe
-            components.html(heatmap_charts.render_embed(), height=450, width=1300)
+            components.html(heatmap_charts.render_embed(), height=450, width=1200)
             
             
             # Display the consolidated shipments table
-            st.subheader("Consolidated Shipments Table")
+            st.markdown("<h2 style='font-size:24px;'>Consolidated Shipments Table</h2>", unsafe_allow_html=True)
+
             
             # Custom CSS to set the height of the dataframe
             custom_css = """
@@ -1017,7 +1027,11 @@ with tab2:
             """
             st.markdown(custom_css, unsafe_allow_html=True)
             
-            # Display the dataframe
+            consolidated_df['Date'] = pd.to_datetime(consolidated_df['Date'])
+
+            # Format the 'Date' column to show only the date part
+            consolidated_df['Date'] = consolidated_df['Date'].dt.date
+                        
             st.dataframe(consolidated_df.reset_index(drop=True).set_index('Date'))
 
 
@@ -1031,12 +1045,12 @@ with tab2:
             )     
             
             # Display charts
-            st.subheader("Utilization Distribution")
             st.plotly_chart(create_utilization_chart(all_consolidated_shipments))
             
             
             # Add the new horizontal stacked bar chart with updated utilization categories
-            st.subheader("Utilization Categories")
+            st.markdown("<h2 style='font-size:24px;'>Utilization Categories</h2>", unsafe_allow_html=True)
+
             
             all_utilizations = [shipment['Utilization %'] for shipment in all_consolidated_shipments]
             total_shipments = len(all_consolidated_shipments)
@@ -1082,6 +1096,61 @@ with tab2:
             
             st.plotly_chart(fig_utilization_categories, use_container_width=True)
 
+
+            st.markdown("<h2 style='font-size:24px;'>Shipment Insights</h2>", unsafe_allow_html=True)
+
+            # Truckload analysis
+            full_truckloads = sum(1 for shipment in all_consolidated_shipments if shipment['Total Pallets'] > 26)
+            partial_truckloads = metrics['Total Shipments'] - full_truckloads
+            
+            # Cost analysis
+            avg_cost_per_pallet = metrics['Total Shipment Cost'] / metrics['Total Pallets']
+            avg_cost_savings_per_shipment = metrics['Cost Savings'] / metrics['Total Shipments']
+            
+            # Date reduction analysis
+            postcode_reductions = {}
+            for postcode, group in df.groupby(group_field):
+                original_dates = set(group['SHIPPED_DATE'])
+                consolidated_dates = set(shipment['Date'] for shipment in all_consolidated_shipments if shipment['GROUP'] == postcode)
+                
+                unique_dates_original = len(original_dates)
+                unique_shipped_dates = len(consolidated_dates)
+                date_reduction = unique_dates_original - unique_shipped_dates
+                percent_date_reduction = (date_reduction / unique_dates_original) * 100 if unique_dates_original > 0 else 0
+                
+                postcode_reductions[postcode] = (date_reduction, percent_date_reduction, unique_dates_original)
+            
+            # Calculate average reduction
+            total_reduction = sum(reduction for reduction, _, _ in postcode_reductions.values())
+            total_percent_reduction = sum(percent for _, percent, _ in postcode_reductions.values())
+            num_groups = len(postcode_reductions)
+            avg_reduction = total_reduction / num_groups if num_groups > 0 else 0
+            avg_percent_reduction = total_percent_reduction / num_groups if num_groups > 0 else 0
+            
+            # Function to display metrics with custom font sizes
+            def display_metric(title, value):
+                st.markdown(f"""
+                    <div style="background-color: #c2dcff; text-align: center; border: 2px solid #1f77b4; padding: 0px; border-radius: 15px;">
+                        <h2 style="font-size: 16px;">{title}</h2>
+                        <h2 style="font-size: 18px;">{value}</h2>
+                    </div>
+                    """, unsafe_allow_html=True)
+                           
+            
+            # Create columns for all 5 metrics in a single row
+            col1, col2, col3, col4, col5 = st.columns(5)
+            
+            with col1:
+                display_metric("Full Truckloads", f"{full_truckloads:,} ({full_truckloads/metrics['Total Shipments']*100:.1f}%)")
+            with col2:
+                display_metric("Partial Truckloads", f"{partial_truckloads:,} ({partial_truckloads/metrics['Total Shipments']*100:.1f}%)")
+            with col3:
+                display_metric("Avg. Cost per Pallet", f"£{avg_cost_per_pallet:.1f}")
+            with col4:
+                display_metric("Avg. Savings per Shipment", f"£{avg_cost_savings_per_shipment:.1f}")
+            with col5:
+                display_metric("Avg. Drop in Shipping Days", f"{avg_reduction:.1f} days ({avg_percent_reduction:.1f}%)")
+            
             
             
             # Determine whether we're using Post Code or Customer level
@@ -1133,16 +1202,19 @@ with tab2:
             group_metrics_df = pd.DataFrame(group_metrics).sort_values('Cost Savings', ascending=False)
             
             # Round decimal columns to 1 place
-            columns_to_round = ['Percent Savings', 'Average Utilization']
+            columns_to_round = ['Baseline Cost', 'Shipment Cost', 'Cost Savings', 'Percent Savings', 'Average Utilization']
             group_metrics_df[columns_to_round] = group_metrics_df[columns_to_round].round(1)
 
             # Select top 20 groups for display
             top_20_groups = group_metrics_df.head(20)
             
 
+            st.write("")            
             
             # Create the comparison chart
-            st.subheader(f"{group_method} Comparison")
+            st.markdown(f"<h2 style='font-size:24px;'>{group_method} Comparison</h2>", unsafe_allow_html=True)
+
+            
             
             # Set fixed chart dimensions and bar properties
             chart_width = 1200  # Fixed chart width in pixels
@@ -1231,7 +1303,8 @@ with tab2:
             st.plotly_chart(fig, use_container_width=True)
             
             # Display the first 5 rows of the detailed metrics in a scrollable table
-            st.subheader(f"Detailed {group_method} Metrics")
+            st.markdown(f"<h2 style='font-size:24px;'>Detailed {group_method} Metrics</h2>", unsafe_allow_html=True)
+
             
             # Custom CSS to set the height of the dataframe and make it scrollable
             custom_css = """
@@ -1257,97 +1330,59 @@ with tab2:
             )
 
 
-            st.subheader("Pallet Distribution")
             fig_pallet_distribution = create_pallet_distribution_chart(all_consolidated_shipments, total_shipment_capacity)
             st.plotly_chart(fig_pallet_distribution)
+            
 
-            # Additional insights
-            st.subheader("Additional Insights")
-            
-            # Weekday distribution
-            weekday_distribution = Counter(shipment['Date'].weekday() for shipment in all_consolidated_shipments)
-            weekday_names = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-            weekday_percentages = {weekday_names[day]: (count / metrics['Total Shipments']) * 100 
-                                   for day, count in weekday_distribution.items()}
-            
-            fig_weekday = px.bar(x=list(weekday_percentages.keys()), y=list(weekday_percentages.values()),
-                                 labels={'x': 'Day of Week', 'y': 'Percentage of Shipments'},
-                                 title='Weekday Distribution of Shipments')
-            st.plotly_chart(fig_weekday, use_container_width=True)
-            
             # Order count distribution
             order_count_distribution = Counter(shipment['Order Count'] for shipment in all_consolidated_shipments)
             order_count_percentages = {
                 '1 order': (order_count_distribution[1] / metrics['Total Shipments']) * 100,
-                '2-5 orders': (sum(order_count_distribution[i] for i in range(2, 6)) / metrics['Total Shipments']) * 100,
+                '2 order': (order_count_distribution[2] / metrics['Total Shipments']) * 100,
+                '3-5 orders': (sum(order_count_distribution[i] for i in range(3, 6)) / metrics['Total Shipments']) * 100,
                 '6-10 orders': (sum(order_count_distribution[i] for i in range(6, 11)) / metrics['Total Shipments']) * 100,
                 '>10 orders': (sum(order_count_distribution[i] for i in range(11, max(order_count_distribution.keys()) + 1)) / metrics['Total Shipments']) * 100
             }
             
-            fig_order_count = px.pie(values=list(order_count_percentages.values()), 
-                                     names=list(order_count_percentages.keys()),
-                                     title='Order Count Distribution')
-            st.plotly_chart(fig_order_count, use_container_width=True)
+            # Create the pie chart
+            fig_order_count = px.pie(
+                values=list(order_count_percentages.values()), 
+                names=list(order_count_percentages.keys()),
+                title='Order Count Distribution',
+                color_discrete_sequence=px.colors.qualitative.Pastel  # Applying pastel color palette
+            )
             
-            # Truckload analysis
-            full_truckloads = sum(1 for shipment in all_consolidated_shipments if shipment['Total Pallets'] > 26)
-            partial_truckloads = metrics['Total Shipments'] - full_truckloads
+            # Update layout for fixed width and title size
+            fig_order_count.update_layout(
+                title={'text': 'Order Count Distribution', 'font': {'size': 22}},
+                width=600  # Fixing the chart width to 600px
+            )
             
-            col1, col2 = st.columns(2)
-            col1.metric("Full Truckloads", f"{full_truckloads:,} ({full_truckloads/metrics['Total Shipments']*100:.1f}%)")
-            col2.metric("Partial Truckloads", f"{partial_truckloads:,} ({partial_truckloads/metrics['Total Shipments']*100:.1f}%)")
+            # Display the chart in Streamlit
+            st.plotly_chart(fig_order_count)
+
             
-            # Cost analysis
-            avg_cost_per_pallet = metrics['Total Shipment Cost'] / metrics['Total Pallets']
-            avg_cost_savings_per_shipment = metrics['Cost Savings'] / metrics['Total Shipments']
-            
-            col1, col2 = st.columns(2)
-            col1.metric("Average Cost per Pallet", f"£{avg_cost_per_pallet:.2f}")
-            col2.metric("Average Cost Savings per Shipment", f"£{avg_cost_savings_per_shipment:.2f}")
-            
-            # Date reduction analysis
-            postcode_reductions = {}
-            for postcode, group in df.groupby(group_field):
-                original_dates = set(group['SHIPPED_DATE'])
-                consolidated_dates = set(shipment['Date'] for shipment in all_consolidated_shipments if shipment['GROUP'] == postcode)
-                
-                unique_dates_original = len(original_dates)
-                unique_shipped_dates = len(consolidated_dates)
-                date_reduction = unique_dates_original - unique_shipped_dates
-                percent_date_reduction = (date_reduction / unique_dates_original) * 100 if unique_dates_original > 0 else 0
-                
-                postcode_reductions[postcode] = (date_reduction, percent_date_reduction, unique_dates_original)
-            
-            # Calculate average reduction
-            total_reduction = sum(reduction for reduction, _, _ in postcode_reductions.values())
-            total_percent_reduction = sum(percent for _, percent, _ in postcode_reductions.values())
-            num_groups = len(postcode_reductions)
-            avg_reduction = total_reduction / num_groups if num_groups > 0 else 0
-            avg_percent_reduction = total_percent_reduction / num_groups if num_groups > 0 else 0
-            
-            # Display the average reduction
-            st.metric("Average Reduction in Shipping Days", f"{avg_reduction:.1f} days ({avg_percent_reduction:.1f}%)")
-                    
+    
 
 # Add a section for data exploration
-st.header("Data Exploration")
+st.markdown("<h2 style='font-size:24px;'>Data Exploration</h2>", unsafe_allow_html=True)
 if st.checkbox("Show raw data"):
     st.subheader("Raw data")
     st.write(df)
 
 
 # Add a histogram of pallets per order
-st.subheader("Distribution of Pallets per Order")
 
 fig_pallets = px.histogram(
     df, 
     x="Total Pallets", 
     nbins=50, 
-    title="Distribution of Pallets per Order"
+    color_discrete_sequence=['#1f77b4']
 )
 
 # Update the layout to set width and height, and add gaps between bars
 fig_pallets.update_layout(
+    title={'text': "Distribution of Pallets per Order (Raw Data)", 'font': {'size': 22}},
     width=1000,
     height=500,
     bargap=0.2  # This adds a gap between bars. Adjust this value to increase or decrease the gap.
