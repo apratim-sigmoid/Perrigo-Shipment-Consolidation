@@ -1031,6 +1031,11 @@ with tab2:
 
             # Format the 'Date' column to show only the date part
             consolidated_df['Date'] = consolidated_df['Date'].dt.date
+            
+            if group_method == 'Post Code Level':
+                consolidated_df = consolidated_df.drop(columns=['GROUP'])
+            else:  # Customer Level
+                consolidated_df = consolidated_df.rename(columns={'GROUP': 'Customer'})
                         
             st.dataframe(consolidated_df.reset_index(drop=True).set_index('Date'))
 
@@ -1368,8 +1373,29 @@ with tab2:
 st.markdown("<h2 style='font-size:24px;'>Data Exploration</h2>", unsafe_allow_html=True)
 if st.checkbox("Show raw data"):
     st.subheader("Raw data")
-    st.write(df)
+    df['SHIPPED_DATE'] = df['SHIPPED_DATE'].dt.date
+    
+    columns = df.columns.tolist()
 
+    # Move 'PROD TYPE' to the front if it's not already there
+    if 'PROD TYPE' in columns:
+        columns.remove('PROD TYPE')
+        columns = ['PROD TYPE'] + columns
+    
+    # Select the first 5 columns (including 'PROD TYPE' as the index)
+    df_display = df[columns[:10]]
+    
+    # Display the first 5 columns
+    st.write(df_display.reset_index(drop=True).set_index('PROD TYPE'))
+
+    # Add download button for raw data
+    csv = df.to_csv(index=False)
+    st.download_button(
+        label="Download Raw Data CSV",
+        data=csv,
+        file_name="raw_data.csv",
+        mime="text/csv",
+    )
 
 # Add a histogram of pallets per order
 
