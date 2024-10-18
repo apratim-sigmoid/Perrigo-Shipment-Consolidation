@@ -435,7 +435,7 @@ def create_consolidated_shipments_calendar(consolidated_df):
             ),
         )
         .set_global_opts(
-            title_opts=opts.TitleOpts(title="Calendar Heatmap for Orders and Shipments Consolidated"),
+            title_opts=opts.TitleOpts(title="Calendar Heatmap for Orders and Shipments After Consolidation"),
             visualmap_opts=opts.VisualMapOpts(
                 max_=max(item[2] for item in calendar_data_consolidated),  # Changed from item[1] to item[2]
                 min_=min(item[2] for item in calendar_data_consolidated),  # Changed from item[1] to item[2]
