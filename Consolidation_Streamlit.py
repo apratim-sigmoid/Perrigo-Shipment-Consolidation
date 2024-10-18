@@ -876,8 +876,8 @@ with tab1:
             # Sort by Shipment Window
             best_results = best_results.sort_values('Shipment Window')
             
-            # Create a complete range of shipment windows from 1 to 30
-            all_windows = list(range(1, 31))
+            # Create a complete range of shipment windows from 0 to 30
+            all_windows = list(range(0, 31))
             
             # Create the subplot figure
             fig = make_subplots(specs=[[{"secondary_y": True}]])
