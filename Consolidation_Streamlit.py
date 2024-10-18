@@ -81,21 +81,22 @@ group_field = 'SHORT_POSTCODE' if group_method == 'Post Code Level' else 'NAME'
 
 
 # Month selection
-all_months = ['Custom', 'All', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+all_months = ['Custom', 'All']
+all_months += [f'{month} 2023' for month in ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']]
+all_months += [f'{month} 2024' for month in ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug']]
 selected_month = st.sidebar.selectbox(
     "Select Month for Consolidation",
     options=all_months,
-    index=2  # Default to 'Jan'
+    index=2  # Default to 'Jan 2023'
 )
 
 # Add date range selector for Custom option
 if selected_month == 'Custom':
-    
-    # Create date objects for the first and last day of 2023
+    # Create date objects for the first day of 2023 and last day of August 2024
     min_date = datetime.date(2023, 1, 1)
-    max_date = datetime.date(2023, 12, 31)
+    max_date = datetime.date(2024, 8, 31)
     
-    # Use date_input with min and max values set to 2023
+    # Use date_input with min and max values set
     start_date = st.sidebar.date_input("Start date", value=min_date, min_value=min_date, max_value=max_date)
     end_date = st.sidebar.date_input("End date", value=max_date, min_value=min_date, max_value=max_date)
     
@@ -106,18 +107,23 @@ elif selected_month == 'All':
     start_date = df['SHIPPED_DATE'].min()
     end_date = df['SHIPPED_DATE'].max()
 else:
-    # Convert month name to number
-    month_to_num = {month: index for index, month in enumerate(all_months[2:], start=1)}
-    selected_month_number = month_to_num[selected_month]
+    # Split the selected month into month and year
+    month, year = selected_month.split()
     
-    # Set year to 2023
-    year = 2023
+    # Convert month name to number
+    month_to_num = {month: index for index, month in enumerate(['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'], start=1)}
+    selected_month_number = month_to_num[month]
+    
+    # Set year
+    year = int(year)
     
     # Set start_date to the first day of the selected month
     start_date = pd.Timestamp(year=year, month=selected_month_number, day=1)
     
     # Set end_date to the last day of the selected month
-    if selected_month_number == 12:
+    if year == 2024 and selected_month_number == 8:
+        end_date = pd.Timestamp(year=2024, month=8, day=31, hour=23, minute=59, second=59)
+    elif selected_month_number == 12:
         end_date = pd.Timestamp(year=year, month=12, day=31, hour=23, minute=59, second=59)
     else:
         end_date = pd.Timestamp(year=year, month=selected_month_number + 1, day=1) - pd.Timedelta(seconds=1)
@@ -413,114 +419,135 @@ def create_pallet_distribution_chart(all_consolidated_shipments, total_shipment_
 def create_consolidated_shipments_calendar(consolidated_df):
     # Group by Date and calculate both Shipments Count and Total Orders
     df_consolidated = consolidated_df.groupby('Date').agg({
-        'Orders': ['count', lambda x: sum(len(orders) for orders in x)]  # Count rows for shipments, sum order lengths for total orders
+        'Orders': ['count', lambda x: sum(len(orders) for orders in x)]
     }).reset_index()
     df_consolidated.columns = ['Date', 'Shipments Count', 'Orders Count']
     
-    calendar_data_consolidated = df_consolidated[['Date', 'Shipments Count', 'Orders Count']].values.tolist()
+    # Split data by year
+    df_2023 = df_consolidated[df_consolidated['Date'].dt.year == 2023]
+    df_2024 = df_consolidated[df_consolidated['Date'].dt.year == 2024]
+    
+    calendar_data_2023 = df_2023[['Date', 'Shipments Count', 'Orders Count']].values.tolist()
+    calendar_data_2024 = df_2024[['Date', 'Shipments Count', 'Orders Count']].values.tolist()
 
-    calendar = (
-        Calendar(init_opts=opts.InitOpts(width="1300px", height="220px", theme=ThemeType.ROMANTIC))
-        .add(
-            series_name="",
-            yaxis_data=calendar_data_consolidated,
-            calendar_opts=opts.CalendarOpts(
-                pos_top="50",
-                pos_left="40",
-                pos_right="30",
-                range_=str(calendar_data_consolidated[0][0].year),
-                yearlabel_opts=opts.CalendarYearLabelOpts(is_show=False),
-                daylabel_opts=opts.CalendarDayLabelOpts(name_map=['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']),
-                monthlabel_opts=opts.CalendarMonthLabelOpts(name_map="en"),
-            ),
-        )
-        .set_global_opts(
-            title_opts=opts.TitleOpts(title="Calendar Heatmap for Orders and Shipments After Consolidation"),
-            visualmap_opts=opts.VisualMapOpts(
-                max_=max(item[2] for item in calendar_data_consolidated),  # Changed from item[1] to item[2]
-                min_=min(item[2] for item in calendar_data_consolidated),  # Changed from item[1] to item[2]
-                orient="horizontal",
-                is_piecewise=False,
-                pos_bottom="20",
-                pos_left="center",
-                range_color=["#E8F5E9", "#1B5E20"],
-                is_show=False,
-            ),
-            tooltip_opts=opts.TooltipOpts(
-                formatter=JsCode(
-                    """
-                    function (p) {
-                        var date = new Date(p.data[0]);
-                        var day = date.getDate().toString().padStart(2, '0');
-                        var month = (date.getMonth() + 1).toString().padStart(2, '0');
-                        var year = date.getFullYear();
-                        return 'Date: ' + day + '/' + month + '/' + year + 
-                               '<br/>Orders: ' + p.data[2] +
-                               '<br/>Shipments: ' + p.data[1];
-                    }
-                    """
+    def create_calendar(data, year):
+        return (
+            Calendar(init_opts=opts.InitOpts(width="984px", height="200px", theme=ThemeType.ROMANTIC))
+            .add(
+                series_name="",
+                yaxis_data=data,
+                calendar_opts=opts.CalendarOpts(
+                    pos_top="50",
+                    pos_left="40",
+                    pos_right="30",
+                    range_=str(year),
+                    yearlabel_opts=opts.CalendarYearLabelOpts(is_show=False),
+                    daylabel_opts=opts.CalendarDayLabelOpts(name_map=['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']),
+                    monthlabel_opts=opts.CalendarMonthLabelOpts(name_map="en"),
+                ),
+            )
+            .set_global_opts(
+                title_opts=opts.TitleOpts(title=f"Calendar Heatmap for Orders and Shipments After Consolidation ({year})"),
+                visualmap_opts=opts.VisualMapOpts(
+                    max_=max(item[2] for item in data) if data else 0,
+                    min_=min(item[2] for item in data) if data else 0,
+                    orient="horizontal",
+                    is_piecewise=False,
+                    pos_bottom="20",
+                    pos_left="center",
+                    range_color=["#E8F5E9", "#1B5E20"],
+                    is_show=False,
+                ),
+                tooltip_opts=opts.TooltipOpts(
+                    formatter=JsCode(
+                        """
+                        function (p) {
+                            var date = new Date(p.data[0]);
+                            var day = date.getDate().toString().padStart(2, '0');
+                            var month = (date.getMonth() + 1).toString().padStart(2, '0');
+                            var year = date.getFullYear();
+                            return 'Date: ' + day + '/' + month + '/' + year + 
+                                   '<br/>Orders: ' + p.data[2] +
+                                   '<br/>Shipments: ' + p.data[1];
+                        }
+                        """
+                    )
                 )
             )
         )
-    )
-    return calendar
+
+    calendar_2023 = create_calendar(calendar_data_2023, 2023)
+    calendar_2024 = create_calendar(calendar_data_2024, 2024)
+
+    return calendar_2023, calendar_2024
 
 def create_original_orders_calendar(original_df):
     df_original = original_df.groupby('SHIPPED_DATE').size().reset_index(name='Orders Shipped')
-    calendar_data_original = df_original[['SHIPPED_DATE', 'Orders Shipped']].values.tolist()
+    
+    # Split data by year
+    df_2023 = df_original[df_original['SHIPPED_DATE'].dt.year == 2023]
+    df_2024 = df_original[df_original['SHIPPED_DATE'].dt.year == 2024]
+    
+    calendar_data_2023 = df_2023[['SHIPPED_DATE', 'Orders Shipped']].values.tolist()
+    calendar_data_2024 = df_2024[['SHIPPED_DATE', 'Orders Shipped']].values.tolist()
 
-    calendar = (
-        Calendar(init_opts=opts.InitOpts(width="1300px", height="220px", theme=ThemeType.ROMANTIC))
-        .add(
-            series_name="",
-            yaxis_data=calendar_data_original,
-            calendar_opts=opts.CalendarOpts(
-                pos_top="50",
-                pos_left="40",
-                pos_right="30",
-                range_=str(calendar_data_original[0][0].year),
-                yearlabel_opts=opts.CalendarYearLabelOpts(is_show=False),
-                daylabel_opts=opts.CalendarDayLabelOpts(name_map=['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']),
-                monthlabel_opts=opts.CalendarMonthLabelOpts(name_map="en"),
-            ),
-        )
-        .set_global_opts(
-            title_opts=opts.TitleOpts(title="Calendar Heatmap for Orders Shipped Before Consolidation"),
-            visualmap_opts=opts.VisualMapOpts(
-                max_=max(item[1] for item in calendar_data_original),
-                min_=min(item[1] for item in calendar_data_original),
-                orient="horizontal",
-                is_piecewise=False,
-                pos_bottom="20",
-                pos_left="center",
-                range_color=["#E8F5E9", "#1B5E20"],
-                is_show=False,
-            ),
-            tooltip_opts=opts.TooltipOpts(
-                formatter=JsCode(
-                    """
-                    function (p) {
-                        var date = new Date(p.data[0]);
-                        var day = date.getDate().toString().padStart(2, '0');
-                        var month = (date.getMonth() + 1).toString().padStart(2, '0');
-                        var year = date.getFullYear();
-                        return 'Date: ' + day + '/' + month + '/' + year + '<br/>Orders: ' + p.data[1];
-                    }
-                    """
+    def create_calendar(data, year):
+        return (
+            Calendar(init_opts=opts.InitOpts(width="984px", height="200px", theme=ThemeType.ROMANTIC))
+            .add(
+                series_name="",
+                yaxis_data=data,
+                calendar_opts=opts.CalendarOpts(
+                    pos_top="50",
+                    pos_left="40",
+                    pos_right="30",
+                    range_=str(year),
+                    yearlabel_opts=opts.CalendarYearLabelOpts(is_show=False),
+                    daylabel_opts=opts.CalendarDayLabelOpts(name_map=['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']),
+                    monthlabel_opts=opts.CalendarMonthLabelOpts(name_map="en"),
+                ),
+            )
+            .set_global_opts(
+                title_opts=opts.TitleOpts(title=f"Calendar Heatmap for Orders Shipped Before Consolidation ({year})"),
+                visualmap_opts=opts.VisualMapOpts(
+                    max_=max(item[1] for item in data) if data else 0,
+                    min_=min(item[1] for item in data) if data else 0,
+                    orient="horizontal",
+                    is_piecewise=False,
+                    pos_bottom="20",
+                    pos_left="center",
+                    range_color=["#E8F5E9", "#1B5E20"],
+                    is_show=False,
+                ),
+                tooltip_opts=opts.TooltipOpts(
+                    formatter=JsCode(
+                        """
+                        function (p) {
+                            var date = new Date(p.data[0]);
+                            var day = date.getDate().toString().padStart(2, '0');
+                            var month = (date.getMonth() + 1).toString().padStart(2, '0');
+                            var year = date.getFullYear();
+                            return 'Date: ' + day + '/' + month + '/' + year + '<br/>Orders: ' + p.data[1];
+                        }
+                        """
+                    )
                 )
             )
         )
-    )
-    return calendar
 
-def create_heatmap_charts(consolidated_df, original_df):
-    chart_original = create_original_orders_calendar(original_df)
-    chart_consolidated = create_consolidated_shipments_calendar(consolidated_df)
+    calendar_2023 = create_calendar(calendar_data_2023, 2023)
+    calendar_2024 = create_calendar(calendar_data_2024, 2024)
 
-    page = Page(layout=Page.SimplePageLayout)
-    page.add(chart_original, chart_consolidated)
+    return calendar_2023, calendar_2024
 
-    return page
+def create_heatmap_charts(consolidated_df, original_df, start_date, end_date):
+    chart_original_2023, chart_original_2024 = create_original_orders_calendar(original_df)
+    chart_consolidated_2023, chart_consolidated_2024 = create_consolidated_shipments_calendar(consolidated_df)
+
+    return {
+        2023: (chart_original_2023, chart_consolidated_2023),
+        2024: (chart_original_2024, chart_consolidated_2024)
+    }
 
 
 def analyze_consolidation_distribution(all_consolidated_shipments, df):
@@ -1031,12 +1058,19 @@ with tab2:
     
             # Add Calendar Chart
             st.markdown("<h2 style='font-size:24px;'>Shipments Calendar Heatmap</h2>", unsafe_allow_html=True)
-
+            
             consolidated_df = pd.DataFrame(all_consolidated_shipments)
-            heatmap_charts = create_heatmap_charts(consolidated_df, df)  # df is the original dataframe
-            components.html(heatmap_charts.render_embed(), height=450, width=1050)
+            heatmap_charts = create_heatmap_charts(consolidated_df, df, start_date, end_date)
             
+            years_in_range = set(pd.date_range(start_date, end_date).year)
             
+            for year in [2023, 2024]:
+                if year in years_in_range:
+                    chart_original, chart_consolidated = heatmap_charts[year]
+                    components.html(chart_original.render_embed(), height=216, width=1000)
+                    components.html(chart_consolidated.render_embed(), height=216, width=1000)
+
+          
             # Display the consolidated shipments table
             st.markdown("<h2 style='font-size:24px;'>Consolidated Shipments Table</h2>", unsafe_allow_html=True)
 
