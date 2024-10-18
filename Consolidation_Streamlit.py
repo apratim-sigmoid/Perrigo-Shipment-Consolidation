@@ -590,7 +590,7 @@ def create_metric_box(label, value, color_start="#1f77b4", color_end="#0053a4"):
         position: relative;
         overflow: hidden;
     ">
-        <p style="color: white; margin: 0; font-size: 16px; font-weight: 600; position: relative; z-index: 1;">{label}</p>
+        <p style="color: white; margin: 0; font-size: 16px; font-weight: 500; position: relative; z-index: 1;">{label}</p>
         <p style="color: white; font-size: 18px; font-weight: 600; margin: 0px 0 0 0; position: relative; z-index: 1;">{value}</p>
         <div style="
             position: absolute;
