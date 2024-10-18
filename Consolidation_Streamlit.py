@@ -578,58 +578,32 @@ def custom_progress_bar():
 
 
 def create_metric_box(label, value, color_start="#1f77b4", color_end="#0053a4"):
-    # Define the CSS for our metric box
-    st.markdown(f"""
-    <style>
-    .metric-box {{
+    html = f"""
+    <div style="
         background: linear-gradient(135deg, {color_start} 0%, {color_end} 100%);
-        border-radius: 15px;
         padding: 5px;
+        border-radius: 15px;
         margin: 0px 0 20px 0;
+        text-align: center;
         box-shadow: 0 4px 6px rgba(0, 0, 0, 0.4);
         border: 2px solid #ffffff;
-    }}
-    .metric-box h4 {{
-        color: white;
-        font-size: 18px;
-        font-weight: 500;
-        margin: 0;
-        text-align: center;
-    }}
-    .metric-box p {{
-        color: white;
-        font-size: 18px;
-        font-weight: 600;
-        margin: 0;
-        text-align: center;
-    }}
-    </style>
-    """, unsafe_allow_html=True)
-
-
-st.markdown("""
-<style>
-/* Style for regular buttons */
-div.stButton > button:first-child {
-    background-color: #c06238;
-    color: white;
-}
-div.stButton > button:hover {
-    background-color: #0053a4;
-    color: white;
-}
-
-/* Style for download buttons */
-div.stDownloadButton > button:first-child {
-    background-color: #c06238;
-    color: white;
-}
-div.stDownloadButton > button:hover {
-    background-color: #0053a4;
-    color: white;
-}
-</style>
-""", unsafe_allow_html=True)
+        position: relative;
+        overflow: hidden;
+    ">
+        <h4 style="color: white; margin: 0; font-size: 16px; font-weight: 500; position: relative; z-index: 1;">{label}</h4>
+        <p style="color: white; font-size: 18px; font-weight: 600; margin: 0px 0 0 0; position: relative; z-index: 1;">{value}</p>
+        <div style="
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: transparent;
+            pointer-events: none;
+        "></div>
+    </div>
+    """
+    return st.markdown(html, unsafe_allow_html=True)
 
     
 # Simulation tab
