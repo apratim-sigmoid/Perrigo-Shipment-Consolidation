@@ -1143,8 +1143,8 @@ with tab2:
                         position: relative;
                         overflow: hidden;
                     ">
-                        <h2 style="font-size: 18px; margin: 0 0 0px 0; color: #1f77b4; position: relative; z-index: 1;">{title}</h2>
-                        <h2 style="font-size: 18px; margin: 0; color: #1f77b4; position: relative; z-index: 1;">{value}</h2>
+                        <p style="font-size: 16px; margin: 0 0 0px 0; color: #1f77b4; position: relative; z-index: 1;">{title}</p>
+                        <p style="font-size: 18px; margin: 0; color: #1f77b4; position: relative; z-index: 1;">{value}</p>
                         <div style="
                             position: absolute;
                             top: 0;
