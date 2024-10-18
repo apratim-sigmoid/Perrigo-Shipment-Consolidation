@@ -24,6 +24,7 @@ from bokeh.transform import linear_cmap
 # Set page config
 st.set_page_config(page_title="Shipment Optimization & Planning Dashboard", layout="wide")
 
+
 st.markdown("""
 <style>
     [data-testid="stSidebar"] {
@@ -42,10 +43,20 @@ st.markdown("""
 
 
 logo = Image.open("perrigo-logo.png")
-st.image(logo, width=120)
+st.image(logo, width=100)
 
 # Title
-st.title("Shipment Optimization & Planning Dashboard")
+st.markdown("""
+<style>
+.big-font {
+    font-size:35px !important;
+    font-weight:bold !important;
+}
+</style>
+""", unsafe_allow_html=True)
+
+st.markdown('<p class="big-font">Shipment Optimization & Planning Dashboard</p>', unsafe_allow_html=True)
+
 
 # Load data and rate cards
 @st.cache_data
