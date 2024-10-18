@@ -731,7 +731,7 @@ with tab1:
             
             col1, col2, col3, col4, col5, col6 = st.columns(6)
             with col1:
-                create_metric_box("Total Orders", f"{best_metrics['  Total Orders']:,}")
+                create_metric_box("Total Orders", f"{best_metrics['Total Orders']:,}")
             with col2:
                 create_metric_box("Total Shipments", f"{best_metrics['Total Shipments']:,}")
             with col3:
