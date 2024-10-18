@@ -762,7 +762,7 @@ with tab1:
             with col3:
                 create_metric_box("Cost Savings", f"£{best_metrics['Cost Savings']:,.1f}")
             with col4:
-                create_metric_box("Percentage Savings", f"{best_metrics['Percent Savings']:.1f}%")
+                create_metric_box("Percentage Saving", f"{best_metrics['Percent Savings']:.1f}%")
             with col5:
                 create_metric_box("Average Utilization", f"{best_metrics['Average Utilization']:.1f}%")
             with col6:
