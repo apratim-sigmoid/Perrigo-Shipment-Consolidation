@@ -937,7 +937,7 @@ with tab1:
                 barmode='stack',
                 height=600,
                 width=1050,
-                # margin=dict(l=50, r=50, t=40, b=20),
+                margin=dict(l=50, r=50, t=40, b=20),
                 legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='right', x=1)
             )
             
