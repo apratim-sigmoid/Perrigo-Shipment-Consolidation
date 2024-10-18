@@ -936,7 +936,7 @@ with tab1:
             fig.update_layout(
                 barmode='stack',
                 height=600,
-                width=1050,
+                width=1100,
                 margin=dict(l=50, r=50, t=40, b=20),
                 legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='right', x=1)
             )
