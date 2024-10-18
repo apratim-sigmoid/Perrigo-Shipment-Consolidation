@@ -514,11 +514,11 @@ def create_original_orders_calendar(original_df):
     return calendar
 
 def create_heatmap_charts(consolidated_df, original_df):
-    chart_consolidated = create_consolidated_shipments_calendar(consolidated_df)
     chart_original = create_original_orders_calendar(original_df)
+    chart_consolidated = create_consolidated_shipments_calendar(consolidated_df)
 
     page = Page(layout=Page.SimplePageLayout)
-    page.add(chart_consolidated, chart_original)
+    page.add(chart_original, chart_consolidated)
 
     return page
 
