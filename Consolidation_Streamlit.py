@@ -936,16 +936,17 @@ with tab1:
             fig.update_layout(
                 barmode='stack',
                 height=600,
+                width=1050,
                 margin=dict(l=50, r=50, t=40, b=20),
                 legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='right', x=1)
             )
             
-            fig.update_xaxes(title_text='Shipment Window', tickmode='linear', dtick=1, range=[0.5, 30.5])
+            fig.update_xaxes(title_text='Shipment Window', tickmode='linear', dtick=1, range=[-0.5, 30.5])
             fig.update_yaxes(title_text='Cost (£)', secondary_y=False)
             fig.update_yaxes(title_text='Total Shipments', secondary_y=True)
             
             # Show the chart
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, use_container_width=False)
             
             
             # Display table with all results
