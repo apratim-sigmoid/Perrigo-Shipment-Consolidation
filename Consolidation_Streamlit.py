@@ -319,11 +319,14 @@ def calculate_metrics(all_consolidated_shipments, df):
 
     # Calculate CO2 Emission
     total_distance = 0
+    sum_dist = 0
     for shipment in all_consolidated_shipments:
         order_ids = shipment['Orders']
         avg_distance = df[df['ORDER_ID'].isin(order_ids)]['Distance'].mean()
+        sum_distance = df[df['ORDER_ID'].isin(order_ids)]['Distance'].sum()
         total_distance += avg_distance
-    co2_emission = total_distance * 2  # Multiply by 2 
+        sum_dist += sum_distance
+    co2_emission = (sum_dist - total_distance) * 2  # Multiply by 2 
 
 
     metrics = {
@@ -584,9 +587,20 @@ def create_metric_box(label, value, color_start="#1f77b4", color_end="#0053a4"):
         text-align: center;
         box-shadow: 0 4px 6px rgba(0, 0, 0, 0.4);
         border: 2px solid #ffffff;
+        position: relative;
+        overflow: hidden;
     ">
-        <h4 style="color: white; margin: 0; font-size: 18px; font-weight: 500;">{label}</h4>
-        <p style="color: white; font-size: 18px; font-weight: 600; margin: 0px 0 0 0;">{value}</p>
+        <h4 style="color: white; margin: 0; font-size: 16px; font-weight: 500; position: relative; z-index: 1;">{label}</h4>
+        <p style="color: white; font-size: 18px; font-weight: 600; margin: 0px 0 0 0; position: relative; z-index: 1;">{value}</p>
+        <div style="
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: transparent;
+            pointer-events: none;
+        "></div>
     </div>
     """
     return st.markdown(html, unsafe_allow_html=True)
@@ -752,7 +766,7 @@ with tab1:
             with col5:
                 create_metric_box("Average Utilization", f"{best_metrics['Average Utilization']:.1f}%")
             with col6:
-                create_metric_box("CO2 Emission (Kg)", f"{best_metrics['CO2 Emission']:,.1f}")
+                create_metric_box("CO2 Reduction (Kg)", f"{best_metrics['CO2 Emission']:,.1f}")
                 
     
             # Display charts for best results
@@ -1001,7 +1015,7 @@ with tab2:
             with col5:
                 create_metric_box("Average Utilization", f"{metrics['Average Utilization']:.1f}%")
             with col6:
-                create_metric_box("CO2 Emission (Kg)", f"{metrics['CO2 Emission']:,.1f}") 
+                create_metric_box("CO2 Reduction (Kg)", f"{metrics['CO2 Emission']:,.1f}") 
                            
     
             # Add Calendar Chart
@@ -1009,7 +1023,7 @@ with tab2:
 
             consolidated_df = pd.DataFrame(all_consolidated_shipments)
             heatmap_charts = create_heatmap_charts(consolidated_df, df)  # df is the original dataframe
-            components.html(heatmap_charts.render_embed(), height=450, width=1200)
+            components.html(heatmap_charts.render_embed(), height=450, width=1050)
             
             
             # Display the consolidated shipments table
@@ -1112,52 +1126,53 @@ with tab2:
             avg_cost_per_pallet = metrics['Total Shipment Cost'] / metrics['Total Pallets']
             avg_cost_savings_per_shipment = metrics['Cost Savings'] / metrics['Total Shipments']
             
-            # Date reduction analysis
-            postcode_reductions = {}
-            for postcode, group in df.groupby(group_field):
-                original_dates = set(group['SHIPPED_DATE'])
-                consolidated_dates = set(shipment['Date'] for shipment in all_consolidated_shipments if shipment['GROUP'] == postcode)
-                
-                unique_dates_original = len(original_dates)
-                unique_shipped_dates = len(consolidated_dates)
-                date_reduction = unique_dates_original - unique_shipped_dates
-                percent_date_reduction = (date_reduction / unique_dates_original) * 100 if unique_dates_original > 0 else 0
-                
-                postcode_reductions[postcode] = (date_reduction, percent_date_reduction, unique_dates_original)
-            
-            # Calculate average reduction
-            total_reduction = sum(reduction for reduction, _, _ in postcode_reductions.values())
-            total_percent_reduction = sum(percent for _, percent, _ in postcode_reductions.values())
-            num_groups = len(postcode_reductions)
-            avg_reduction = total_reduction / num_groups if num_groups > 0 else 0
-            avg_percent_reduction = total_percent_reduction / num_groups if num_groups > 0 else 0
+            # Calculate average pallets per shipment
+            avg_pallets_per_shipment = metrics['Total Pallets'] / metrics['Total Shipments'] if metrics['Total Shipments'] > 0 else 0
+
             
             # Function to display metrics with custom font sizes
             def display_metric(title, value):
                 st.markdown(f"""
-                    <div style="background-color: #c2dcff; text-align: center; border: 2px solid #1f77b4; padding: 0px; border-radius: 15px;">
-                        <h2 style="font-size: 16px;">{title}</h2>
-                        <h2 style="font-size: 18px;">{value}</h2>
+                    <div style="
+                        background-color: #c2dcff;
+                        border: 2px solid #1f77b4;
+                        border-radius: 15px;
+                        padding: 0px 0px;
+                        margin: 0px 0 0px 0;
+                        text-align: center;
+                        position: relative;
+                        overflow: hidden;
+                    ">
+                        <h2 style="font-size: 18px; margin: 0 0 0px 0; color: #1f77b4; position: relative; z-index: 1;">{title}</h2>
+                        <h2 style="font-size: 18px; margin: 0; color: #1f77b4; position: relative; z-index: 1;">{value}</h2>
+                        <div style="
+                            position: absolute;
+                            top: 0;
+                            left: 0;
+                            right: 0;
+                            bottom: 0;
+                            background: transparent;
+                            pointer-events: none;
+                        "></div>
                     </div>
-                    """, unsafe_allow_html=True)
+                """, unsafe_allow_html=True)
                            
             
             # Create columns for all 5 metrics in a single row
             col1, col2, col3, col4, col5 = st.columns(5)
-            
+
             with col1:
                 display_metric("Full Truckloads", f"{full_truckloads:,} ({full_truckloads/metrics['Total Shipments']*100:.1f}%)")
             with col2:
                 display_metric("Partial Truckloads", f"{partial_truckloads:,} ({partial_truckloads/metrics['Total Shipments']*100:.1f}%)")
             with col3:
-                display_metric("Avg. Cost per Pallet", f"£{avg_cost_per_pallet:.1f}")
+                display_metric("Cost per Pallet", f"£{avg_cost_per_pallet:.1f}")
             with col4:
-                display_metric("Avg. Savings per Shipment", f"£{avg_cost_savings_per_shipment:.1f}")
+                display_metric("Savings per Shipment", f"£{avg_cost_savings_per_shipment:.1f}")
             with col5:
-                display_metric("Avg. Drop in Shipping Days", f"{avg_reduction:.1f} days ({avg_percent_reduction:.1f}%)")
-            
-            
-            
+                display_metric("Pallets per Shipment", f"{avg_pallets_per_shipment:.1f}")
+              
+                
             # Determine whether we're using Post Code or Customer level
             comparison_level = 'SHORT_POSTCODE' if group_method == 'Post Code Level' else 'NAME'
             
