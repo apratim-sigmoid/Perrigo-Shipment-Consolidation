@@ -540,14 +540,116 @@ def create_original_orders_calendar(original_df):
 
     return calendar_2023, calendar_2024
 
-def create_heatmap_charts(consolidated_df, original_df, start_date, end_date):
+def create_heatmap_and_bar_charts(consolidated_df, original_df, start_date, end_date):
+    # Create calendar charts (existing code)
     chart_original_2023, chart_original_2024 = create_original_orders_calendar(original_df)
     chart_consolidated_2023, chart_consolidated_2024 = create_consolidated_shipments_calendar(consolidated_df)
-
+    
+    # Create bar charts for orders over time
+    def create_bar_charts(df_original, df_consolidated, year):
+        # Filter data for the specific year
+        mask_original = df_original['SHIPPED_DATE'].dt.year == year
+        year_data_original = df_original[mask_original]
+        
+        # For consolidated data
+        if 'Date' in df_consolidated.columns:
+            mask_consolidated = pd.to_datetime(df_consolidated['Date']).dt.year == year
+            year_data_consolidated = df_consolidated[mask_consolidated]
+        else:
+            year_data_consolidated = pd.DataFrame()
+        
+        # Create subplot figure with shared x-axis
+        fig = make_subplots(
+            rows=2, 
+            cols=1,
+            shared_xaxes=True,
+            vertical_spacing=0.1,
+            subplot_titles=(
+                f'Daily Orders Before Consolidation ({year})',
+                f'Daily Orders After Consolidation ({year})'
+            )
+        )
+        
+        # Add bar chart for original orders
+        if not year_data_original.empty:
+            daily_orders = year_data_original.groupby('SHIPPED_DATE').size().reset_index()
+            daily_orders.columns = ['Date', 'Orders']
+            
+            fig.add_trace(
+                go.Bar(
+                    x=daily_orders['Date'],
+                    y=daily_orders['Orders'],
+                    name='Orders',
+                    marker_color='#1f77b4'
+                ),
+                row=1, 
+                col=1
+            )
+        
+        # Add bar chart for consolidated orders
+        if not year_data_consolidated.empty:
+            daily_consolidated = year_data_consolidated.groupby('Date').agg({
+                'Orders': lambda x: sum(len(orders) for orders in x)
+            }).reset_index()
+            
+            fig.add_trace(
+                go.Bar(
+                    x=daily_consolidated['Date'],
+                    y=daily_consolidated['Orders'],
+                    name='Orders',
+                    marker_color='#749f77'
+                ),
+                row=2, 
+                col=1
+            )
+        
+        # Update layout
+        fig.update_layout(
+            height=500,  # Increased height for better visibility
+            showlegend=True,
+            legend=dict(
+                orientation="h",
+                yanchor="bottom",
+                y=1.02,
+                xanchor="right",
+                x=1
+            ),
+            margin=dict(l=50, r=20, t=60, b=20),
+            hovermode='x unified'
+        )
+        
+        # Update x-axes
+        fig.update_xaxes(
+            rangeslider=dict(
+                visible=True,
+                thickness=0.05,  # Make the rangeslider thinner
+                bgcolor='#F4F4F4',  # Light gray background
+                bordercolor='#DEDEDE',  # Slightly darker border
+            ),
+            row=2,
+            col=1
+        )
+        fig.update_xaxes(
+            rangeslider=dict(visible=False),
+            row=1,
+            col=1
+        )
+        
+        # Update y-axes
+        fig.update_yaxes(title_text="Number of Orders", row=1, col=1)
+        fig.update_yaxes(title_text="Number of Orders", row=2, col=1)
+        
+        return fig
+    
+    # Create bar charts for both years
+    bar_charts_2023 = create_bar_charts(original_df, consolidated_df, 2023)
+    bar_charts_2024 = create_bar_charts(original_df, consolidated_df, 2024)
+    
     return {
-        2023: (chart_original_2023, chart_consolidated_2023),
-        2024: (chart_original_2024, chart_consolidated_2024)
+        2023: (chart_original_2023, chart_consolidated_2023, bar_charts_2023),
+        2024: (chart_original_2024, chart_consolidated_2024, bar_charts_2024)
     }
+
 
 
 def analyze_consolidation_distribution(all_consolidated_shipments, df):
@@ -1061,17 +1163,128 @@ with tab2:
             st.markdown("<h2 style='font-size:24px;'>Shipments Calendar Heatmap</h2>", unsafe_allow_html=True)
             
             consolidated_df = pd.DataFrame(all_consolidated_shipments)
-            heatmap_charts = create_heatmap_charts(consolidated_df, df, start_date, end_date)
+            
+            # Add Summary Metrics in Collapsible Section
+            with st.expander("View Detailed Metrics Summary", expanded=False):
+                # Calculate metrics for before consolidation
+                days_shipped_before = df['SHIPPED_DATE'].nunique()
+                total_pallets_before = df['Total Pallets'].sum()
+                pallets_per_day_before = total_pallets_before / days_shipped_before
+                total_orders_before = len(df)
+                pallets_per_shipment_before = total_pallets_before / total_orders_before  # Each order is a shipment
+
+                # Calculate metrics for after consolidation
+                days_shipped_after = consolidated_df['Date'].nunique()
+                total_pallets_after = consolidated_df['Total Pallets'].sum()
+                pallets_per_day_after = total_pallets_after / days_shipped_after
+                total_shipments_after = len(consolidated_df)
+                pallets_per_shipment_after = total_pallets_after / total_shipments_after
+
+                # Calculate percentage changes
+                days_change = ((days_shipped_after - days_shipped_before) / days_shipped_before) * 100
+                pallets_per_day_change = ((pallets_per_day_after - pallets_per_day_before) / pallets_per_day_before) * 100
+                pallets_per_shipment_change = ((pallets_per_shipment_after - pallets_per_shipment_before) / pallets_per_shipment_before) * 100
+
+                # Create three columns for before, after, and change metrics
+                col1, col2, col3 = st.columns(3)
+
+                # Style for metric display
+                metric_style = """
+                    <div style="
+                        background-color: #f0f2f6;
+                        padding: 0px;
+                        border-radius: 5px;
+                        margin: 5px 0;
+                    ">
+                        <span style="font-weight: bold;">{label}:</span> {value}
+                    </div>
+                """
+
+                # Style for percentage changes
+                change_style = """
+                    <div style="
+                        background-color: #e8f0fe;
+                        padding: 0px;
+                        border-radius: 5px;
+                        margin: 5px 0;
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                    ">
+                        <span style="font-weight: bold;">{label}:</span>
+                        <span style="color: {color}; font-weight: bold;">{value:+.1f}%</span>
+                    </div>
+                """
+
+                # Before consolidation metrics
+                with col1:
+                    st.markdown("##### Before Consolidation")
+                    st.markdown(metric_style.format(
+                        label="Days Shipped",
+                        value=f"{days_shipped_before:,}"
+                    ), unsafe_allow_html=True)
+                    st.markdown(metric_style.format(
+                        label="Pallets Shipped per Day",
+                        value=f"{pallets_per_day_before:.1f}"
+                    ), unsafe_allow_html=True)
+                    st.markdown(metric_style.format(
+                        label="Pallets per Shipment",
+                        value=f"{pallets_per_shipment_before:.1f}"
+                    ), unsafe_allow_html=True)
+
+                # After consolidation metrics
+                with col2:
+                    st.markdown("##### After Consolidation")
+                    st.markdown(metric_style.format(
+                        label="Days Shipped",
+                        value=f"{days_shipped_after:,}"
+                    ), unsafe_allow_html=True)
+                    st.markdown(metric_style.format(
+                        label="Pallets Shipped per Day",
+                        value=f"{pallets_per_day_after:.1f}"
+                    ), unsafe_allow_html=True)
+                    st.markdown(metric_style.format(
+                        label="Pallets per Shipment",
+                        value=f"{pallets_per_shipment_after:.1f}"
+                    ), unsafe_allow_html=True)
+
+                # Percentage changes
+                with col3:
+                    st.markdown("##### Percentage Change")
+                    st.markdown(change_style.format(
+                        label="Days Shipped",
+                        value=days_change,
+                        color="blue" if days_change > 0 else "green"
+                    ), unsafe_allow_html=True)
+                    st.markdown(change_style.format(
+                        label="Pallets Shipped per Day",
+                        value=pallets_per_day_change,
+                        color="green" if pallets_per_day_change > 0 else "red"
+                    ), unsafe_allow_html=True)
+                    st.markdown(change_style.format(
+                        label="Pallets per Shipment",
+                        value=pallets_per_shipment_change,
+                        color="green" if pallets_per_shipment_change > 0 else "red"
+                    ), unsafe_allow_html=True)
+                
+                
+            charts = create_heatmap_and_bar_charts(consolidated_df, df, start_date, end_date)
             
             years_in_range = set(pd.date_range(start_date, end_date).year)
             
             for year in [2023, 2024]:
                 if year in years_in_range:
-                    chart_original, chart_consolidated = heatmap_charts[year]
+                    chart_original, chart_consolidated, bar_comparison = charts[year]
+                    
+                    # Show calendar heatmaps
                     components.html(chart_original.render_embed(), height=216, width=1000)
                     components.html(chart_consolidated.render_embed(), height=216, width=1000)
-
-          
+                    
+                    # Show combined bar charts in expander
+                    with st.expander(f"Show Daily Orders Distribution Comparison ({year})"):
+                        st.plotly_chart(bar_comparison, use_container_width=True)
+                      
+                        
             # Display the consolidated shipments table
             st.markdown("<h2 style='font-size:24px;'>Consolidated Shipments Table</h2>", unsafe_allow_html=True)
 
@@ -1170,6 +1383,7 @@ with tab2:
             
             # Cost analysis
             avg_cost_per_pallet = metrics['Total Shipment Cost'] / metrics['Total Pallets']
+            avg_baseline_cost_per_pallet = metrics['Total Baseline Cost'] / metrics['Total Pallets']
             avg_cost_savings_per_shipment = metrics['Cost Savings'] / metrics['Total Shipments']
             
             # Calculate average pallets per shipment
@@ -1204,20 +1418,21 @@ with tab2:
                 """, unsafe_allow_html=True)
                            
             
-            # Create columns for all 5 metrics in a single row
-            col1, col2, col3, col4, col5 = st.columns(5)
+            # Create columns for all metrics in a single row
+            col1, col2, col3, col4, col5, col6 = st.columns(6)
 
             with col1:
                 display_metric("Full Truckloads", f"{full_truckloads:,} ({full_truckloads/metrics['Total Shipments']*100:.1f}%)")
             with col2:
                 display_metric("Partial Truckloads", f"{partial_truckloads:,} ({partial_truckloads/metrics['Total Shipments']*100:.1f}%)")
             with col3:
-                display_metric("Cost per Pallet", f"£{avg_cost_per_pallet:.1f}")
+                display_metric("Cost/Pallet", f"£{avg_cost_per_pallet:.1f}")
             with col4:
-                display_metric("Savings per Shipment", f"£{avg_cost_savings_per_shipment:.1f}")
+                display_metric("Baseline Cost/Pallet", f"£{avg_baseline_cost_per_pallet:.1f}")
             with col5:
-                display_metric("Pallets per Shipment", f"{avg_pallets_per_shipment:.1f}")
-              
+                display_metric("Savings/Shipment", f"£{avg_cost_savings_per_shipment:.1f}")
+            with col6:
+                display_metric("Pallets/Shipment", f"{avg_pallets_per_shipment:.1f}")
                 
             # Determine whether we're using Post Code or Customer level
             comparison_level = 'SHORT_POSTCODE' if group_method == 'Post Code Level' else 'NAME'
